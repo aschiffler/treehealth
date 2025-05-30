@@ -1,5 +1,5 @@
 import React from 'react';
-import { SensorType, SENSOR_TYPE_LABELS } from '../types';
+
 
 // Sensor Icon Component
 // Added optional x, y for direct SVG positioning if needed, but foreignObject handles it.
