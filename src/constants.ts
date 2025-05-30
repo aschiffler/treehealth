@@ -21,7 +21,8 @@ export const SENSOR_TYPE_TO_INFLUX_FIELD: Record<SensorType, string> = {
   [SensorType.SOIL_MOISTURE]: 'soil_moisture',
   [SensorType.TEMP_AIR]: 'temperature_air',
   [SensorType.HUMIDITY_AIR]: 'humidity_air',
-  [SensorType.BATTERY]: 'battery'
+  [SensorType.BATTERY]: 'battery',
+  [SensorType.STRESS]: 'stress', // Added for stress percentage
 };
 
 
@@ -32,4 +33,5 @@ export const ALL_SENSOR_TYPES: SensorType[] = [
   SensorType.TEMP_AIR,
   SensorType.HUMIDITY_AIR,
   SensorType.BATTERY,
+  SensorType.STRESS, // Added for stress percentage
 ];

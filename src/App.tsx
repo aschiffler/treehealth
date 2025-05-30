@@ -122,8 +122,9 @@ const App: React.FC = () => {
   const [activeSensorIdForChart, setActiveSensorIdForChart] = useState<string | null>(null);
   const [autoUpdateHistoricalData, setAutoUpdateHistoricalData] = useState<boolean>(true);
   const autoUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const [selectedSensorForChart, setSelectedSensorForChart] = useState<SensorType>(SensorType.TEMP_WOOD);
+  const [selectedSensorForChart, setSelectedSensorForChart] = useState<SensorType>(SensorType.STRESS);
   const [error, setError] = useState<string | null>(null);
+  const [sensorTypeFilters] = useState<Record<string, boolean>>({});
 
   // MQTT connection and event handling
   useEffect(() => {
@@ -169,22 +170,12 @@ const App: React.FC = () => {
             raw_message_name: rawPayload.name,
           };
           const fields = rawPayload.fields;
-          const sensorIdentifier = (rawPayload.name || effectiveSensorId).toLowerCase();
-          if (fields.resistance !== undefined) {
-            updatedLiveData.resistance = fields.resistance;
-            if (fields.temperature !== undefined) {
-              updatedLiveData.temperature_wood = fields.temperature;
+          // Add all fields from rawPayload.fields if filter is true for that key
+          Object.entries(fields).forEach(([key, value]) => {
+            if (sensorTypeFilters[key] !== false) {
+              (updatedLiveData as any)[key] = value;
             }
-          } else if (fields.temperature !== undefined) {
-            if (sensorIdentifier.includes('wood') || sensorIdentifier.includes('pulse') || sensorIdentifier.includes('trunk')) {
-              updatedLiveData.temperature_wood = fields.temperature;
-            } else if (sensorIdentifier.includes('air') || sensorIdentifier.includes('ambient')) {
-              updatedLiveData.temperature_air = fields.temperature;
-            }
-          }
-          if (fields.battery !== undefined) updatedLiveData.battery = fields.battery;
-          if (fields.soil_moisture !== undefined) updatedLiveData.soil_moisture = fields.soil_moisture;
-          if (fields.humidity_air !== undefined) updatedLiveData.humidity_air = fields.humidity_air;
+          });
           return updatedLiveData;
         });
       } catch (e) {
@@ -357,28 +348,33 @@ const App: React.FC = () => {
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         <div className="lg:col-span-1 p-4 bg-sky-700 shadow-xl rounded-lg">
-          <TreeSensorDiagram />
+          <TreeSensorDiagram stressValue={typeof liveData?.stress === 'number' ? liveData.stress : undefined} />
         </div>
         <div className="lg:col-span-2 p-4 bg-sky-700 shadow-xl rounded-lg">
-          <h2 className="text-2xl font-semibold text-green-700 mb-2 text-center">Live Sensor Readings</h2>
           {liveData && liveData.last_updated_timestamp ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
               {ALL_SENSOR_TYPES.map(sensorKey => {
                 const value = liveData[sensorKey as keyof SensorValues];
                 if (value !== undefined) {
                   return (
-                    <SensorDataCard
-                      key={sensorKey}
-                      label={SENSOR_TYPE_LABELS[sensorKey]}
-                      value={value}
-                      unit={
-                        sensorKey === SensorType.TEMP_WOOD || sensorKey === SensorType.TEMP_AIR ? '°C' :
-                        sensorKey === SensorType.SOIL_MOISTURE || sensorKey === SensorType.HUMIDITY_AIR ? '%' :
-                        sensorKey === SensorType.RESISTANCE ? 'kΩ' :
-                        sensorKey === SensorType.BATTERY ? 'V' : ''
-                      }
-                      lastUpdateTimestamp={liveData.last_updated_timestamp || new Date().toISOString()}
-                    />
+                    <div key={sensorKey} className="bg-sky-500 p-4 rounded-lg shadow-md">
+                      <span className="block text-base font-semibold text-white mb-1">
+                        {SENSOR_TYPE_LABELS[sensorKey]}
+                      </span>
+                      <SensorDataCard
+                        key={sensorKey}
+                        label={SENSOR_TYPE_LABELS[sensorKey]}
+                        value={value}
+                        unit={
+                          sensorKey === SensorType.TEMP_WOOD || sensorKey === SensorType.TEMP_AIR ? '°C' :
+                          sensorKey === SensorType.SOIL_MOISTURE || sensorKey === SensorType.HUMIDITY_AIR ? '%' :
+                          sensorKey === SensorType.RESISTANCE ? 'kΩ' :
+                          sensorKey === SensorType.BATTERY ? 'V' :
+                          sensorKey === SensorType.STRESS ? '%' : ''
+                        }
+                        lastUpdateTimestamp={liveData.last_updated_timestamp || new Date().toISOString()}
+                      />
+                    </div>
                   );
                 }
                 return null;

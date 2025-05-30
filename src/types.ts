@@ -4,6 +4,7 @@ export interface RawMqttFields {
   soil_moisture?: number; // Assuming it might come with this key
   humidity_air?: number;  // Assuming it might come with this key
   battery?: number;
+  stress?: number; // Assuming it might come with this key
   payloadB64?: string;
   payload_raw?: number;
   rssi?: number;
@@ -22,8 +23,9 @@ export interface RawMqttPayload {
 // Represents the application's unified view of all possible sensor values.
 // Fields are optional as they may come from different sensors at different times.
 export interface SensorValues {
+  stress?: number;         // Percentage
   resistance?: number;      // kOhms
-  temperature_wood?: number; // Celsius - Specific to wood
+  temperature?: number; // Celsius - Specific to wood
   soil_moisture?: number;   // Percentage
   temperature_air?: number; // Celsius - Specific to air
   humidity_air?: number;    // Percentage
@@ -47,21 +49,23 @@ export interface HistoricalDataPoint extends Partial<SensorValues> { // Use Part
 
 export const SensorType = {
   RESISTANCE: 'resistance',
-  TEMP_WOOD: 'temperature_wood', // Changed from 'temperature'
+  TEMP_WOOD: 'temperature',
   SOIL_MOISTURE: 'soil_moisture',
   TEMP_AIR: 'temperature_air',
   HUMIDITY_AIR: 'humidity_air',
   BATTERY: 'battery',
+  STRESS: 'stress', // Added for stress percentage
 } as const;
 export type SensorType = typeof SensorType[keyof typeof SensorType];
 
 export const SENSOR_TYPE_LABELS: Record<SensorType, string> = {
+  [SensorType.STRESS]: 'Stress (%)',
   [SensorType.RESISTANCE]: 'Wood Resistance (kΩ)',
   [SensorType.TEMP_WOOD]: 'Wood Temperature (°C)',
   [SensorType.SOIL_MOISTURE]: 'Soil Moisture (%)',
   [SensorType.TEMP_AIR]: 'Air Temperature (°C)',
   [SensorType.HUMIDITY_AIR]: 'Air Humidity (%)',
-  [SensorType.BATTERY]: 'Battery (V)',
+  [SensorType.BATTERY]: 'Battery (V)'
 };
 
 export const ConnectionStatus = {

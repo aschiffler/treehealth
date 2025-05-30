@@ -73,6 +73,7 @@ const HistoricalChart: React.FC<HistoricalChartProps> = ({ data, selectedSensor 
           <Tooltip content={<CustomTooltip />} />
           <Legend wrapperStyle={{ paddingTop: '20px' }} />
           <Line
+            dot={false}
             type="monotone"
             dataKey="value"
             name={sensorLabel}
