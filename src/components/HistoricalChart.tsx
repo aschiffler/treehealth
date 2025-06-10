@@ -14,8 +14,11 @@ const formatDateToDDMMYY = (dateInput: Date | string): string => {
   const D = date.getDate().toString().padStart(2, '0');
   const M = (date.getMonth() + 1).toString().padStart(2, '0');
   const YY = date.getFullYear().toString().slice(-2);
-  return `${D}.${M}.${YY}`;
-};
+  const HH = date.getHours().toString().padStart(2, '0');
+  const MM = date.getMinutes().toString().padStart(2, '0');
+  //const SS = date.getSeconds().toString().padStart(2, '0');
+  return `${D}.${M}.${YY} ${HH}:${MM}`; //:${SS}`;
+}
 
 const HistoricalChart: React.FC<HistoricalChartProps> = ({ data, selectedSensor }) => {
   const chartData = data.map(point => ({
@@ -53,7 +56,7 @@ const HistoricalChart: React.FC<HistoricalChartProps> = ({ data, selectedSensor 
             stroke="#063851"
             tick={{ fontSize: 10 }}
             interval="preserveStartEnd"
-            label={{ value: "Date (day.month.year)", fill: '#374151', offset: -10, position: 'insideBottom', style: { textAnchor: 'middle' } }}
+            label={{ value: "Date (dd.mm.yy HH:MM)", fill: '#374151', offset: -10, position: 'insideBottom', style: { textAnchor: 'middle' } }}
             />
           <YAxis
             stroke="#063851"
