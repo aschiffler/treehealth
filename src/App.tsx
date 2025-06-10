@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import mqtt, { type IClientOptions } from 'mqtt';
 import { 
     type AppLiveData, 
@@ -26,7 +26,7 @@ import TreeSensorDiagram from './components/TreeSensorDiagram';
 import SensorDataCard from './components/SensorDataCard';
 
 // Helper to parse CSV data from InfluxDB
-const parseInfluxCSV = (csvText: string, sensorType: SensorType, sensorMeasurementId: string): HistoricalDataPoint[] => {
+const parseInfluxCSV = (csvText: string, sensorType: SensorType): HistoricalDataPoint[] => {
   const points: HistoricalDataPoint[] = [];
   const lines = csvText.trim().split('\n');
   
@@ -45,7 +45,8 @@ const parseInfluxCSV = (csvText: string, sensorType: SensorType, sensorMeasureme
   const headers = lines[headerLineIndex].split(',');
   const timeIndex = headers.indexOf('_time');
   const valueIndex = headers.indexOf('_value');
-
+  const sensorIndex = headers.indexOf('_measurement')
+ 
   if (timeIndex === -1 || valueIndex === -1) {
     console.error('CSV missing _time or _value columns');
     return points;
@@ -57,6 +58,7 @@ const parseInfluxCSV = (csvText: string, sensorType: SensorType, sensorMeasureme
       const date = new Date(values[timeIndex]);
       const valueStr = values[valueIndex];
       const value = parseFloat(valueStr);
+      const sensorMeasurementId = values[sensorIndex];
 
       if (!isNaN(date.getTime()) && !isNaN(value)) {
         const point: HistoricalDataPoint = {
@@ -120,8 +122,6 @@ const App: React.FC = () => {
   const [isHistoricalDataLoading, setIsHistoricalDataLoading] = useState<boolean>(false);
   const [historicalDataError, setHistoricalDataError] = useState<string | null>(null);
   const [activeSensorIdForChart, setActiveSensorIdForChart] = useState<string | null>(null);
-  const [autoUpdateHistoricalData, setAutoUpdateHistoricalData] = useState<boolean>(true);
-  const autoUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [selectedSensorForChart, setSelectedSensorForChart] = useState<SensorType>(SensorType.STRESS);
   const [error, setError] = useState<string | null>(null);
   const [sensorTypeFilters] = useState<Record<string, boolean>>({});
@@ -244,7 +244,7 @@ const App: React.FC = () => {
     const fluxQuery = `
       from(bucket: "${INFLUXDB_BUCKET}")
         |> range(start: -30d)
-        |> filter(fn: (r) => r["_measurement"] == "${sensorMeasurementId}")
+        |> filter(fn: (r) => r["app_id"] == "thws-trees")
         |> filter(fn: (r) => r["_field"] == "${influxField}")
         |> yield(name: "mean")
     `;
@@ -263,7 +263,7 @@ const App: React.FC = () => {
         throw new Error(`InfluxDB query failed: ${response.status} ${response.statusText}. ${errorText}`);
       }
       const csvData = await response.text();
-      setInfluxHistoricalData(parseInfluxCSV(csvData, sensorType, sensorMeasurementId));
+      setInfluxHistoricalData(parseInfluxCSV(csvData, sensorType));
     } catch (err) {
       setHistoricalDataError(err instanceof Error ? err.message : String(err));
       setInfluxHistoricalData([]);
@@ -280,25 +280,6 @@ const App: React.FC = () => {
       setInfluxHistoricalData([]);
     }
   }, [activeSensorIdForChart, selectedSensorForChart, fetchHistoricalData]);
-
-  // Auto-update historical data
-  useEffect(() => {
-    if (autoUpdateIntervalRef.current) {
-      clearInterval(autoUpdateIntervalRef.current);
-      autoUpdateIntervalRef.current = null;
-    }
-    if (autoUpdateHistoricalData && activeSensorIdForChart && selectedSensorForChart) {
-      autoUpdateIntervalRef.current = setInterval(() => {
-        fetchHistoricalData(activeSensorIdForChart, selectedSensorForChart);
-      }, 5 * 60 * 1000);
-    }
-    return () => {
-      if (autoUpdateIntervalRef.current) {
-        clearInterval(autoUpdateIntervalRef.current);
-        autoUpdateIntervalRef.current = null;
-      }
-    };
-  }, [autoUpdateHistoricalData, activeSensorIdForChart, selectedSensorForChart, fetchHistoricalData]);
 
   // Status helpers
   const getStatusColor = (status: ConnectionStatus): string => {
@@ -357,7 +338,14 @@ const App: React.FC = () => {
                 const value = liveData[sensorKey as keyof SensorValues];
                 if (value !== undefined) {
                   return (
-                    <div key={sensorKey} className="bg-sky-500 p-4 rounded-lg shadow-md">
+                    <div
+                      key={sensorKey}
+                      className="bg-sky-500 p-4 rounded-lg shadow-md cursor-pointer hover:bg-sky-600"
+                      onClick={() => {
+                        setSelectedSensorForChart(sensorKey as SensorType);
+                        setActiveSensorIdForChart(liveData.last_updated_sensor_id || null);
+                      }}
+                    >
                       <span className="block text-base font-semibold text-white mb-1">
                         {SENSOR_TYPE_LABELS[sensorKey]}
                       </span>
@@ -369,7 +357,6 @@ const App: React.FC = () => {
                           sensorKey === SensorType.TEMP_WOOD || sensorKey === SensorType.TEMP_AIR ? '°C' :
                           sensorKey === SensorType.SOIL_MOISTURE || sensorKey === SensorType.HUMIDITY_AIR ? '%' :
                           sensorKey === SensorType.RESISTANCE ? 'kΩ' :
-                          sensorKey === SensorType.BATTERY ? 'V' :
                           sensorKey === SensorType.STRESS ? '%' : ''
                         }
                         lastUpdateTimestamp={liveData.last_updated_timestamp || new Date().toISOString()}
@@ -389,35 +376,7 @@ const App: React.FC = () => {
           )}
           <div className="pt-4"></div>
           <div className="grid grid-cols-1 gap-4">
-            <h2 className="text-2xl font-semibold text-green-700 mb-2 text-center">Historical Data Chart</h2>
-            <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-4">
-              <div>
-                <label htmlFor="sensorSelect" className="mr-2 font-medium text-gray-700">Select Measurement:</label>
-                <select
-                  id="sensorSelect"
-                  value={selectedSensorForChart}
-                  onChange={e => setSelectedSensorForChart(e.target.value as SensorType)}
-                  className="bg-sky-700 p-2 border border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
-                  aria-label="Select sensor type for historical chart"
-                >
-                  {ALL_SENSOR_TYPES.map(sensor => (
-                    <option key={sensor} value={sensor}>{SENSOR_TYPE_LABELS[sensor]}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label htmlFor="autoUpdateCheckbox" className="flex items-center font-medium text-gray-700 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    id="autoUpdateCheckbox"
-                    checked={autoUpdateHistoricalData}
-                    onChange={e => setAutoUpdateHistoricalData(e.target.checked)}
-                    className="mr-2 h-4 w-4 bg-sky-700 checked:bg-sky-700 text-green-600 border-gray-300 rounded focus:ring-green-500"
-                  />
-                  Auto-refresh chart (5 min)
-                </label>
-              </div>
-            </div>
+            <h2 className="text-2xl font-semibold text-green-700 mb-2 text-center">Click on Sensor Cards for historical view</h2>
             {isHistoricalDataLoading && <p className="text-center text-blue-500 py-8">Loading historical data...</p>}
             {historicalDataError && <p className="text-center text-red-500 py-8">Error: {historicalDataError}</p>}
             {!isHistoricalDataLoading && !historicalDataError && influxHistoricalData.length > 0 && (

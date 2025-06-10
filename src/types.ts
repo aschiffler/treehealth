@@ -3,7 +3,7 @@ export interface RawMqttFields {
   temperature?: number; // Generic temperature from payload
   soil_moisture?: number; // Assuming it might come with this key
   humidity_air?: number;  // Assuming it might come with this key
-  battery?: number;
+  temperature_air?: number; // Generic temperature from payload
   stress?: number; // Assuming it might come with this key
   payloadB64?: string;
   payload_raw?: number;
@@ -53,7 +53,6 @@ export const SensorType = {
   SOIL_MOISTURE: 'soil_moisture',
   TEMP_AIR: 'temperature_air',
   HUMIDITY_AIR: 'humidity_air',
-  BATTERY: 'battery',
   STRESS: 'stress', // Added for stress percentage
 } as const;
 export type SensorType = typeof SensorType[keyof typeof SensorType];
@@ -65,7 +64,6 @@ export const SENSOR_TYPE_LABELS: Record<SensorType, string> = {
   [SensorType.SOIL_MOISTURE]: 'Soil Moisture (%)',
   [SensorType.TEMP_AIR]: 'Air Temperature (°C)',
   [SensorType.HUMIDITY_AIR]: 'Air Humidity (%)',
-  [SensorType.BATTERY]: 'Battery (V)'
 };
 
 export const ConnectionStatus = {

@@ -8,21 +8,18 @@ interface HistoricalChartProps {
 }
 
 // Helper function to format date and time to DD.MM.YY HH:MM:SS
-const formatDateToDDMMYYHHMMSS = (dateInput: Date | string): string => {
+const formatDateToDDMMYY = (dateInput: Date | string): string => {
   const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
   if (isNaN(date.getTime())) return "Invalid Date";
   const D = date.getDate().toString().padStart(2, '0');
   const M = (date.getMonth() + 1).toString().padStart(2, '0');
   const YY = date.getFullYear().toString().slice(-2);
-  const HH = date.getHours().toString().padStart(2, '0');
-  const MM = date.getMinutes().toString().padStart(2, '0');
-  const SS = date.getSeconds().toString().padStart(2, '0');
-  return `${D}.${M}.${YY} ${HH}:${MM}:${SS}`;
+  return `${D}.${M}.${YY}`;
 };
 
 const HistoricalChart: React.FC<HistoricalChartProps> = ({ data, selectedSensor }) => {
   const chartData = data.map(point => ({
-    timestamp: formatDateToDDMMYYHHMMSS(point.date),
+    timestamp: formatDateToDDMMYY(point.date),
     date: point.date,
     value: point[selectedSensor],
   }));
@@ -48,7 +45,7 @@ const HistoricalChart: React.FC<HistoricalChartProps> = ({ data, selectedSensor 
       <ResponsiveContainer>
         <LineChart
           data={chartData}
-          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+          margin={{ top: 5, right: 15, left: 15, bottom: 15 }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" />
           <XAxis
@@ -56,10 +53,11 @@ const HistoricalChart: React.FC<HistoricalChartProps> = ({ data, selectedSensor 
             stroke="#063851"
             tick={{ fontSize: 10 }}
             interval="preserveStartEnd"
-          />
+            label={{ value: "Date (day.month.year)", fill: '#374151', offset: -10, position: 'insideBottom', style: { textAnchor: 'middle' } }}
+            />
           <YAxis
             stroke="#063851"
-            label={{ value: sensorLabel, angle: -90, position: 'insideLeft', fill: '#374151', style: { textAnchor: 'middle' } }}
+            label={{ value: sensorLabel, angle: -90, offset: 0, position: 'insideLeft', fill: '#374151', style: { textAnchor: 'middle' } }}
             domain={['auto', 'auto']}
             allowDecimals={true}
             tickFormatter={tick =>
@@ -71,12 +69,22 @@ const HistoricalChart: React.FC<HistoricalChartProps> = ({ data, selectedSensor 
             }
           />
           <Tooltip content={<CustomTooltip />} />
-          <Legend wrapperStyle={{ paddingTop: '20px' }} />
+          <Legend
+            verticalAlign="top"
+            align="right"
+            wrapperStyle={{
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              padding: '5px',
+              zIndex: 999,
+            }}
+          />
           <Line
             dot={false}
             type="monotone"
             dataKey="value"
-            name={sensorLabel}
+            name={`Device: ${data[0].sensor_id}`}
             stroke="#063851"
             activeDot={{ r: 8 }}
             strokeWidth={2}
